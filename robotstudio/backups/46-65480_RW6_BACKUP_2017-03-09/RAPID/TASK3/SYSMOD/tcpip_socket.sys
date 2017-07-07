@@ -1,0 +1,57 @@
+MODULE tcpip_socket(SYSMODULE)
+    
+    PROC connect_to_server(VAR socketdev socket,VAR string message)
+        !connect to server and send back the client-identifier
+
+        TPWrite "create connection";
+        SocketCreate socket;
+        SocketConnect socket,address,port_receiver;
+        
+        !connection established
+        TPWrite "connection established";
+            
+    ENDPROC 
+    
+    PROC init_socket(VAR socketdev server_socket,num port)       
+        IF (SocketGetStatus(server_socket) = SOCKET_CLOSED) SocketCreate server_socket;
+        IF (SocketGetStatus(server_socket) = SOCKET_CREATED) SocketBind server_socket,address,port;
+        IF (SocketGetStatus(server_socket) = SOCKET_BOUND) SocketListen server_socket;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+PROC wait_for_client(VAR socketdev server_socket,VAR socketdev client_socket,\num wait_time)
+        VAR string client_ip;
+        VAR num time_val:=WAIT_MAX;  !default to wait-forever
+        VAR bool conn_state:=FALSE;
+
+        IF Present(wait_time) time_val:=wait_time;
+        
+        IF (SocketGetStatus(client_socket) <> SOCKET_CLOSED) SocketClose client_socket;
+        WaitUntil (SocketGetStatus(client_socket) = SOCKET_CLOSED);
+        
+        WHILE (SocketGetStatus(client_socket) <> SOCKET_CONNECTED) DO
+
+            SocketAccept server_socket,client_socket,\ClientAddress:=client_ip,\Time:=time_val;
+            WaitTime 0.1;
+
+        ENDWHILE
+        TPWrite "Client at "+client_ip+" connected.";
+
+    ERROR
+		!IF ERRNO=ERR_SOCK_TIMEOUT THEN
+        IF (ERRNO=ERR_SOCK_TIMEOUT) OR (ERRNO=ERR_SOCK_CLOSED) THEN
+            SkipWarn;  !TBD: include this error data in the message logged below?
+			TRYNEXT;
+        ENDIF
+    ENDPROC
+    
+PROC close_sockets(VAR socketdev socket1,VAR socketdev socket2)
+        !close socket
+        SocketClose socket1;
+        SocketClose socket2;
+        
+        TPWrite "sockets closed";
+    ENDPROC
+ENDMODULE

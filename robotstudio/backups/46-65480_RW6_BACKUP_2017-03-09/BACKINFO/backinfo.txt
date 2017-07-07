@@ -1,0 +1,71 @@
+#
+# Generated backup file, do not edit.
+#
+# Originally at: /hd0a/TEMP/89f477c3
+# 17-03-09  10:59:58
+#
+>>SYSTEM_ID:
+46-65480
+
+>>PRODUCTS_ID:
+RobotWare Version: 6.02.1029
+
+  RobotWare Base
+  613-1 Collision Detection
+  709-1 DeviceNet Master/Slave
+  689-1 Externally Guided Motion (EGM)
+  614-1 FTP and NFS client
+  623-1 Multitasking
+  616-1 PC Interface
+  840-2 PROFIBUS Anybus Device
+  608-1 World Zones
+  English
+  Drive System IRB 460/640/660/760/4600/66xx/6700
+  IRB 4600-40/2.55 Type B
+  810-2 SafeMove
+
+>>HOME:
+All public files and directories
+
+>>SYSPAR:
+SYS.cfg
+PROC.cfg
+MMC.cfg
+EIO.cfg
+SIO.cfg
+MOC.cfg
+
+
+>>TASK1: (Motion,,)
+SYSMOD/user.sys @ user.sys
+SYSMOD/tcpip_msgs.sys @ tcpip_msgs.sys
+PROGMOD/TCP_mtip_tool2.mod @ tcp_mtip_tool2.mod
+SYSMOD/LINKEDM.sys @ linkedm.sys
+PROGMOD/Module1.mod @ module1.mod
+SYSMOD/tcpip_socket.sys @ tcpip_socket.sys
+PROGMOD/Wobj_wobj1_proto1.mod @ wobj_wobj1_proto1.mod
+SYSMOD/tcpip_params.sys @ tcpip_params.sys
+PROGMOD/Motion_Procs.mod @ motion_procs.mod
+PROGMOD/Motion.mod @ motion.mod
+
+>>TASK2: (PSC_CBC,,)
+SYSMOD/user.sys @ user.sys
+
+>>TASK3: (Sender,,)
+PROGMOD/Sender_Procs.mod @ sender_procs.mod
+SYSMOD/user.sys @ user.sys
+SYSMOD/tcpip_msgs.sys @ tcpip_msgs.sys
+PROGMOD/Sender.mod @ sender.mod
+SYSMOD/tcpip_socket.sys @ tcpip_socket.sys
+SYSMOD/tcpip_params.sys @ tcpip_params.sys
+
+>>TASK4: (Receiver,,)
+SYSMOD/user.sys @ user.sys
+SYSMOD/tcpip_msgs.sys @ tcpip_msgs.sys
+PROGMOD/Receiver_Procs.mod @ receiver_procs.mod
+SYSMOD/tcpip_socket.sys @ tcpip_socket.sys
+PROGMOD/Receiver.mod @ receiver.mod
+SYSMOD/tcpip_params.sys @ tcpip_params.sys
+
+
+>>EOF:

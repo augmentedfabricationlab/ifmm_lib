@@ -1,0 +1,95 @@
+MODULE tcpip_params(SYSMODULE)
+    
+    RECORD TCPIP_MSG_RAW
+        num msg_type;
+        rawbytes data;
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_RAW_RECEIVER
+        num msg_type;
+        num msg_counter;
+        num timestamp_sec;
+        num timestamp_nanosec;
+        rawbytes data;
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_COMMAND
+        num cmd_type;
+        
+        num val1; !either: 6 values for jointtarget or 7 values for robtarget
+        num val2;
+        num val3;
+        num val4;
+        num val5;
+        num val6;
+        num val7; 
+        
+        num velocity;
+        num duration;
+        num zone;
+        num tool;
+        num arbitrary;
+        
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_CP_CARTESIAN
+        num msg_type;
+        robtarget target;
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_CP_JOINT
+        num msg_type;
+        robjoint joints;  !in DEGREES TODO:check!!
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_COMMAND_EXEC
+        num msg_type;
+        num cmd_exec_counter;
+    ENDRECORD
+    
+    RECORD TCPIP_MSG_COMMAND_REC
+        num msg_type;
+        num msg_rec_counter;
+    ENDRECORD
+    
+    !new message
+    PERS TCPIP_MSG_COMMAND tcpip_message;
+    PERS bool TCPIP_new_message:=FALSE; !these variables should use waittestandset for read/write protection to prevent conflicts
+    
+    !locks
+    PERS bool msg_lock:=FALSE;
+    PERS bool cmd_exec_lock:=FALSE;
+    PERS bool sender_socket_lock:=FALSE;
+    PERS bool msg_send_counter_lock:=FALSE;
+    
+    !cmd buffer
+    !CONST num MAX_BUFFER_SIZE:=2048;
+    CONST num MAX_BUFFER_SIZE:=3;
+    PERS TCPIP_MSG_COMMAND tcpip_message_command_buffer{MAX_BUFFER_SIZE};
+    PERS num BUFFER_LENGTH;
+    PERS num READ_PTR;
+    PERS num WRITE_PTR;
+    
+    !counter    
+    PERS num msg_rec_counter;
+    PERS num cmd_exec_counter;
+    PERS num msg_send_counter;
+    
+    !server
+    !CONST string address:="192.168.125.1"; 
+    CONST string address:="127.0.0.1";
+    CONST num port_receiver:=30003;
+    CONST num port_sender:=30004;
+    CONST num port_sender_sync:=30005;
+    
+    !for interrupts
+    PERS bool send_msg_cmd_exec:=FALSE;
+    PERS bool send_msg_cmd_rcv:=FALSE;
+    
+    !clock
+    VAR clock tcpip_clock;
+    
+    ! reset interrupts
+    PERS bool reset_to_main:=FALSE; 
+    
+ENDMODULE

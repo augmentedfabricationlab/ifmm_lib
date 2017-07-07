@@ -1,0 +1,11 @@
+<Motor>
+  <Motor_Calib JointID="1" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="2" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="3" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="4" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="5" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="6" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="7" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="8" Cal_Offset="0" AbsAcc="false"/>
+  <Motor_Calib JointID="9" Cal_Offset="0" AbsAcc="false"/>
+</Motor>

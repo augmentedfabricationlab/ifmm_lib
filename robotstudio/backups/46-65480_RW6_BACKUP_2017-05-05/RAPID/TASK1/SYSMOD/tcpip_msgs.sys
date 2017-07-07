@@ -1,0 +1,314 @@
+MODULE tcpip_msgs(SYSMODULE)
+    
+    !---------------------------------------------------------------------------------------------------------------------------------      
+    !Message TYPES
+    !--------------------------------------------------------------------------------------------------------------------------------- 
+    CONST num MSG_COMMAND:=1; ![counter,position,orientation,optional values]
+    CONST num MSG_STOP:=2;
+    CONST num MSG_IDLE:=3; 
+    CONST num MSG_COMMAND_RECEIVED:=4; ![counter]
+    CONST num MSG_CURRENT_POSE_CARTESIAN:=5; ![position,orientation]
+    CONST num MSG_CURRENT_POSE_JOINT:=6; ![j1,j2,j3,j4,j5,j6]
+    CONST num MSG_STRING:=7; ![string]
+    CONST num MSG_FLOAT_LIST:=8; ![float,float,...]
+    CONST num MSG_OPERATION:=9; ![string] (the name of the operation)
+    CONST num MSG_ACTUATOR_INIT:=10; !tool[position,orientation] + base[position,orientation]
+
+    CONST num MSG_ANALOG_IN:=11;
+    CONST num MSG_ANALOG_OUT:=12;
+    CONST num MSG_DIGITAL_IN:=13;
+    CONST num MSG_DIGITAL_OUT:=14;
+    CONST num MSG_COMMAND_EXECUTED:=15; ![counter]
+    !---------------------------------------------------------------------------------------------------------------------------------
+    
+    !---------------------------------------------------------------------------------------------------------------------------------      
+    !Command TYPES
+    !--------------------------------------------------------------------------------------------------------------------------------- 
+    CONST num CMD_IDLE_MODE:=0;
+    CONST num CMD_GO_TO_JOINTTARGET_ABS:=1;
+    CONST num CMD_GO_TO_TASKTARGET:=2;
+    CONST num CMD_PICK_BRICK:=3;
+    CONST num CMD_PLACE_BRICK:=4;
+    CONST num CMD_GO_TO_JOINTTARGET_REL:=5;
+    CONST num CMD_PICK_BRICK_FROM_POSE:=6;
+    
+    !---------------------------------------------------------------------------------------------------------------------------------
+    !Functions for sending messages 
+    !---------------------------------------------------------------------------------------------------------------------------------       
+    PROC TCPIP_send_msg(VAR socketdev client_socket,VAR TCPIP_MSG_RAW message)
+        !send byte message: add message length,msg_type,raw_msg
+        
+        VAR rawbytes buffer;
+        VAR num time_sync;
+        VAR num time_sec;
+        VAR num time_nanosec;
+        
+        time_sync:=ClkRead(tcpip_clock);
+
+        time_sec:=Trunc(time_sync);
+        time_nanosec:=Trunc((time_sync-time_sec)*1000);
+        
+        WaitTestAndSet msg_send_counter_lock;
+            Incr msg_send_counter;
+        msg_send_counter_lock:=FALSE;
+        
+        !WaitTestAndSet sender_socket_lock;
+        PackRawBytes RawBytesLen(message.data)+12,      buffer,1,\IntX:=ULINT; !Raw Message Length
+        PackRawBytes message.msg_type,                  buffer,9,\IntX:=ULINT; !Message type
+        
+        PackRawBytes msg_send_counter,                  buffer,17,\IntX:=UDINT; !counter of total sent messages
+        PackRawBytes time_sec,                          buffer,21,\IntX:=UDINT; !timestamp TODO: needs to be written into sec and nanosec
+        PackRawBytes time_nanosec,                      buffer,25,\IntX:=UDINT; !empty        
+        CopyRawBytes message.data,1,                    buffer,29; !Message data
+        
+        SocketSend client_socket \RawData:=buffer;
+        ClearRawBytes message.data;
+        !sender_socket_lock:=FALSE;
+    
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    PROC TCPIP_send_msg_command_received(VAR socketdev client_socket)
+        !send the waypoint counter to the server
+        
+        VAR TCPIP_MSG_RAW raw_message;
+        
+        !Force message header to the correct values
+        raw_message.msg_type:=MSG_COMMAND_RECEIVED; 
+        
+        !Pack data into message
+        PackRawBytes msg_rec_counter,raw_message.data, 1,\IntX:=UDINT;
+        
+        TCPIP_send_msg client_socket,raw_message;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    PROC TCPIP_send_msg_command_executed(VAR socketdev client_socket)
+        !send the command executed to the server
+        
+        
+        VAR TCPIP_MSG_RAW raw_message;
+        
+        TPWrite "Command exec: " + ValToStr(cmd_exec_counter);
+        
+        !Force message header to the correct values
+        raw_message.msg_type:=MSG_COMMAND_EXECUTED;
+        
+        !Pack data into message
+        PackRawBytes cmd_exec_counter,raw_message.data, 1,\IntX:=UDINT;
+
+        TCPIP_send_msg client_socket,raw_message;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+
+    PROC TCPIP_send_msg_cp_cartesian_t0(VAR socketdev client_socket)
+        !send the current position of the current tool to the server
+        
+        VAR TCPIP_MSG_RAW raw_message;
+        VAR robtarget TCPIP_current_pos;
+        
+        !TCPIP_current_pos:=CRobT(); !:=CRobT(\Tool:=tool0 \WObj:=wobj0);
+        TCPIP_current_pos:=CRobT(\Tool:=tool0 \WObj:=wobj0);
+        
+        !Force message header to the correct values
+        raw_message.msg_type:=MSG_CURRENT_POSE_CARTESIAN;
+
+        !Pack data into message
+        PackRawBytes TCPIP_current_pos.trans.x,   raw_message.data, 1,\Float4;
+        PackRawBytes TCPIP_current_pos.trans.y,   raw_message.data, 5,\Float4;
+        PackRawBytes TCPIP_current_pos.trans.z,   raw_message.data, 9,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q1,    raw_message.data,13,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q2,    raw_message.data,17,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q3,    raw_message.data,21,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q4,    raw_message.data,25,\Float4;
+
+        TCPIP_send_msg client_socket,raw_message;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    PROC TCPIP_send_msg_cp_cartesian(VAR socketdev client_socket)
+        !send the current position of the current tool to the server
+        
+        VAR TCPIP_MSG_RAW raw_message;
+        VAR robtarget TCPIP_current_pos;
+        
+        TCPIP_current_pos:=CRobT(); !:=CRobT(\Tool:=tool0 \WObj:=wobj0);
+        !TCPIP_current_pos:=CRobT(\Tool:=tool0 \WObj:=wobj0);
+        
+        !Force message header to the correct values
+        raw_message.msg_type:=MSG_CURRENT_POSE_CARTESIAN;
+
+        !Pack data into message
+        PackRawBytes TCPIP_current_pos.trans.x,   raw_message.data, 1,\Float4;
+        PackRawBytes TCPIP_current_pos.trans.y,   raw_message.data, 5,\Float4;
+        PackRawBytes TCPIP_current_pos.trans.z,   raw_message.data, 9,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q1,    raw_message.data,13,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q2,    raw_message.data,17,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q3,    raw_message.data,21,\Float4;
+        PackRawBytes TCPIP_current_pos.rot.q4,    raw_message.data,25,\Float4;
+
+        TCPIP_send_msg client_socket,raw_message;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    PROC TCPIP_send_msg_cp_joint(VAR socketdev client_socket)
+        !send the current joint position in rad to the server
+        VAR TCPIP_MSG_RAW raw_message;
+        VAR jointtarget TCPIP_jointtarget;
+        VAR robjoint TCPIP_joints_rad;
+        
+        TCPIP_jointtarget:=CJointT();
+        
+        !Convert data from ABB units to ROS standard units
+        TCPIP_joints_rad:=deg2rad_robjoint(TCPIP_jointtarget.robax);
+        
+        !Force message header to the correct values
+        raw_message.msg_type:=MSG_CURRENT_POSE_JOINT;
+
+        !Pack data into message
+        PackRawBytes TCPIP_joints_rad.rax_1,    raw_message.data, 1,\Float4;
+        PackRawBytes TCPIP_joints_rad.rax_2,    raw_message.data, 5,\Float4;
+        PackRawBytes TCPIP_joints_rad.rax_3,    raw_message.data, 9,\Float4;
+        PackRawBytes TCPIP_joints_rad.rax_4,    raw_message.data,13,\Float4;
+        PackRawBytes TCPIP_joints_rad.rax_5,    raw_message.data,17,\Float4;
+        PackRawBytes TCPIP_joints_rad.rax_6,    raw_message.data,21,\Float4;
+
+        TCPIP_send_msg client_socket,raw_message;
+
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    
+    !---------------------------------------------------------------------------------------------------------------------------------
+    !Functions for receiving messages 
+    !--------------------------------------------------------------------------------------------------------------------------------- 
+    PROC TCPIP_receive_msg(VAR socketdev client_socket,VAR TCPIP_MSG_RAW_RECEIVER message)
+        VAR rawbytes buffer;
+        VAR num time_val:=WAIT_MAX;  !default to wait-forever
+        VAR num bytes_rcvd;
+        VAR num msg_length;
+
+        ClearRawBytes buffer;
+
+        !TBD: need to determine whether this handles split/merged messages correctly
+        
+        !Read prefix INT (total message length)
+        SocketReceive client_socket,\RawData:=buffer,\ReadNoOfBytes:=8,\Time:=time_val;
+        UnpackRawBytes buffer,1,msg_length,\IntX:=ULINT; !msg length = msg_data_langth + msg_header_length, without the length of the message type(which is 8byte)
+        !TPWrite ValToStr(msg_length);
+        
+        !Read remaining message bytes
+        SocketReceive client_socket,\RawData:=buffer,\ReadNoOfBytes:=(msg_length+8),\NoRecBytes:=bytes_rcvd,\Time:=time_val;
+        IF (bytes_rcvd <> (msg_length+8)) THEN
+            ErrWrite \W,"ROS Socket Recv Failed","Did not receive expected # of bytes.",
+                     \RL2:="Expected: " + ValToStr(msg_length+8),
+                     \RL3:="Received: " + ValToStr(bytes_rcvd);
+            RETURN;
+        ENDIF
+        
+        !Unpack message header/data
+        UnpackRawBytes buffer,1,message.msg_type,\IntX:=ULINT;
+        
+        UnpackRawBytes buffer,9,message.msg_counter,\IntX:=UDINT;
+        UnpackRawBytes buffer,13,message.timestamp_sec,\IntX:=UDINT;
+        UnpackRawBytes buffer,17,message.timestamp_nanosec,\IntX:=UDINT;
+        
+        !If message is bigger then 4 bytes,copy raw message into buffer
+        IF msg_length > 20 THEN
+            CopyRawBytes   buffer,21,message.data,1;
+            !TPWrite "RAWBYTESLENGTH: " + ValToStr(RawBytesLen(message.data));
+        ELSE
+            ClearRawBytes message.data;
+        ENDIF
+        
+        !count received messages
+        !counter:=counter + 1;
+        !TPWrite "received_message " + ValToStr(counter);
+        
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    
+    PROC TCPIP_receive_msg_command(VAR TCPIP_MSG_RAW_RECEIVER message_raw, VAR TCPIP_MSG_COMMAND message_command)
+        
+        !TPWrite "RAWBYTESLENGTH: " + ValToStr(RawBytesLen(message_raw.data));
+        
+        !Integrity Check: Data Size
+        !IF (RawBytesLen(raw_message.data) < 52) THEN
+        !   ErrWrite \W,"ROS Socket Missing Data","Insufficient data for joint_trajectory_pt",
+        !           \RL2:="expected: 52",
+        !           \RL3:="received: " + ValToStr(RawBytesLen(raw_message.data));
+        !   RAISE ERR_OUTOFBND;  !TBD: define specific error code
+        !ENDIF
+        
+        !Unpack data fields
+        UnpackRawBytes message_raw.data,1,message_command.cmd_type,\IntX:=UDINT;
+        
+        UnpackRawBytes message_raw.data,5,message_command.val1,\Float4;
+        UnpackRawBytes message_raw.data,9,message_command.val2,\Float4;
+        UnpackRawBytes message_raw.data,13,message_command.val3,\Float4;
+        UnpackRawBytes message_raw.data,17,message_command.val4,\Float4;
+        UnpackRawBytes message_raw.data,21,message_command.val5,\Float4;
+        UnpackRawBytes message_raw.data,25,message_command.val6,\Float4;
+        UnpackRawBytes message_raw.data,29,message_command.val7,\Float4;
+
+        UnpackRawBytes message_raw.data,33,message_command.velocity,\IntX:=UDINT;
+        UnpackRawBytes message_raw.data,37,message_command.duration,\Float4;
+        UnpackRawBytes message_raw.data,41,message_command.zone,\IntX:=UDINT;
+        UnpackRawBytes message_raw.data,45,message_command.tool,\IntX:=UDINT;
+        UnpackRawBytes message_raw.data,49,message_command.arbitrary,\Float4;
+        
+        !TPWrite "received " + ValToStr(message_command.waypoint_counter) + " waypoint";
+        
+    ERROR
+        RAISE;  !raise errors to calling code
+    ENDPROC
+    !--------------------------------------------------------------------------------------------------------------------------------- !
+ 
+    !--------------------------------------------------------------------------------------------------------------------------------- !
+    !Functions for calculating radian/degree conversions ----------------------------------------------------------------------------- !
+    !--------------------------------------------------------------------------------------------------------------------------------- !
+    LOCAL FUNC num deg2rad(num deg)
+        RETURN deg * pi / 180;
+    ENDFUNC
+
+    LOCAL FUNC robjoint deg2rad_robjoint(robjoint deg)
+        VAR robjoint rad;
+        rad.rax_1:=deg2rad(deg.rax_1);
+        rad.rax_2:=deg2rad(deg.rax_2);
+        rad.rax_3:=deg2rad(deg.rax_3);
+        rad.rax_4:=deg2rad(deg.rax_4);
+        rad.rax_5:=deg2rad(deg.rax_5);
+        rad.rax_6:=deg2rad(deg.rax_6);
+
+        RETURN rad;
+    ENDFUNC
+
+    LOCAL FUNC num rad2deg(num rad)
+        RETURN rad * 180 / pi;
+    ENDFUNC
+
+    LOCAL FUNC robjoint rad2deg_robjoint(robjoint rad)
+        VAR robjoint deg;
+        deg.rax_1:=rad2deg(rad.rax_1);
+        deg.rax_2:=rad2deg(rad.rax_2);
+        deg.rax_3:=rad2deg(rad.rax_3);
+        deg.rax_4:=rad2deg(rad.rax_4);
+        deg.rax_5:=rad2deg(rad.rax_5);
+        deg.rax_6:=rad2deg(rad.rax_6);
+        
+        RETURN deg;
+    ENDFUNC
+    !--------------------------------------------------------------------------------------------------------------------------------- !
+    
+ENDMODULE
