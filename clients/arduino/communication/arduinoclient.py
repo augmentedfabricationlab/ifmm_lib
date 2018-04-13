@@ -55,7 +55,7 @@ class ArduinoClient(object):
         
         #self.angle_per_step_m_front = (1.8/4)/8 # --> if motor is configured for micro steps
         #self.angle_per_step_m_back = (1.8/4)/9 * 29./34. # --> if motor is configured for micro steps
-        self.angle_per_step_m_front = (1.8)/8
+        self.angle_per_step_m_front = (1.8)/15
         self.angle_per_step_m_back = (1.8)/9 * 29./34.
         self.angle_per_step_m_feeder = (1.8/4)
         
@@ -392,15 +392,13 @@ class ArduinoClient(object):
     #===========================================================================
     
     #===========================================================================
-    def send_cmd_bend(self, angle, wait_for_response = True):
+    def send_cmd_bend(self, angle, overbending_value, wait_for_response = True):
         """ send a bend command message to arduino with two int values. int1 = motorsteps front, int2 = motorsteps back """
-        angle_per_step_front = self.angle_per_step_m_front
-        angle_per_step_back = self.angle_per_step_m_back
-        
+        angle_per_step_front = self.angle_per_step_m_front 
         motor_pos_front = self.get_motor_pos_value_from_angle(angle, angle_per_step_front)
-        motor_pos_back = self.get_motor_pos_value_from_angle(angle, angle_per_step_back)
+        overbending_value = self.get_motor_pos_value_from_angle(overbending_value, angle_per_step_front)
         
-        return self.__get(msg_type = MSG_CMD_BEND, msg = [int(motor_pos_front), int(motor_pos_back)], wait_for_response = wait_for_response)
+        return self.__get(msg_type = MSG_CMD_BEND, msg = [int(motor_pos_front), int(overbending_value)], wait_for_response = wait_for_response)
     
     #===========================================================================
     def send_cmd_reset_encoder(self, wait_for_response = True):

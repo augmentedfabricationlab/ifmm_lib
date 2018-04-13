@@ -45,7 +45,7 @@ class ABBCommunication(ClientContainer):
         self.int_speed = 0 # speed: 0 = slow, 1 = mid, 2 = fast
         self.float_duration = 0 #duration is not used, use velocity instead
         self.int_zonedata = 10 # zonedata: in mm
-        self.int_tool = 1 # toolnumber: 0 = tool0, 1 = mesh mould tool, 2 = hokuyo, 3 = mtip
+        self.int_tool = 1 # toolnumber: 0 = tool0, 1 = mesh mould tool, 2 = mesh mould tool with bending pin, 3 = mtip
         self.float_arbitrary = 0 #spare field for any kind of input
         
         # home positions cartesian
@@ -269,7 +269,7 @@ class ABBCommunication(ClientContainer):
         # toolnumber: 0 = tool0, 1 = meshmould, 2 = hokuyo
         self.int_tool = 1
     # =================================================================================
-    def set_tool_lrf(self):
+    def set_tool_meshmould_withbendingpin(self):
         # toolnumber: 0 = tool0, 1 = meshmould, 2 = hokuyo
         self.int_tool = 2
     # =================================================================================
